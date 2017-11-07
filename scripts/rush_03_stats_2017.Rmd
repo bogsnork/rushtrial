@@ -1,0 +1,177 @@
+---
+title: "Rush Trial: statistical analysis"
+output: html_notebook
+---
+
+#Packages
+```{r}
+library(tidyverse)
+library(nortest)
+library(ggpubr)
+```
+
+#Import data
+```{r}
+cover_data <- read.csv("../data/cover_data.csv", header = TRUE)
+```
+
+
+reminder of the taxa
+```{r}
+unique(cover_data$taxon)
+```
+
+
+
+#Test assumptions
+
+## Homogeneity of variances
+
+###Fligner killeen test
+
+The Fligner-Killeen test: **if the p-value is < 0.05 then reject hypothesis that variances are homogeneous**
+
+```{r}
+cover_data %>% 
+  filter(taxon == "rushes") %>% 
+  fligner.test(x = .$cover, g = .$treat_plot)
+```
+
+No evidence that the variances of *rushes* accross the treatments are not homogeneous (Fligner-Killeen:med chi-squared = 5.7217, df = 7, p-value = 0.5726).
+
+
+```{r}
+cover_data %>% 
+  filter(taxon == "grasses") %>% 
+  fligner.test(x = .$cover, g = .$treat_plot)
+```
+
+No evidence that the variances of *grasses* accross the treatments are not homogeneous (Fligner-Killeen:med chi-squared = 12.738, df = 7, p-value = 0.07876).
+
+
+```{r}
+cover_data %>% 
+  filter(taxon == "herbs") %>% 
+  fligner.test(x = .$cover, g = .$treat_plot)
+```
+
+No evidence that the variances of *herbs* accross the treatments are not homogeneous (Fligner-Killeen:med chi-squared = 5.5001, df = 7, p-value = 0.5992).
+
+
+```{r}
+cover_data %>% 
+  filter(taxon == "bryophytes") %>% 
+  fligner.test(x = .$cover, g = .$treat_plot)
+```
+
+No evidence that the variances of *bryophytes* accross the treatments are not homogeneous (Fligner-Killeen:med chi-squared = 1.6505, df = 7, p-value = 0.9766).
+
+
+```{r}
+cover_data %>% 
+  filter(taxon == "sedges") %>% 
+  fligner.test(x = .$cover, g = .$treat_plot)
+```
+
+No evidence that the variances of *sedges* accross the treatments are not homogeneous (Fligner-Killeen:med chi-squared = 7.3397, df = 7, p-value = 0.3944).
+
+
+##Normality
+
+plot data
+```{r}
+ggplot(cover_data, aes(x = cover)) +
+  geom_histogram() +
+  facet_grid(facets = ~taxon)
+```
+
+not looking particularly normal
+
+
+###Anderson Darling test
+
+Anderson Darling composite test for normality: **if the p-value is < 0.05 then reject hypothesis that the distribution is normal**
+
+
+```{r}
+ad.test(x = cover_data$cover[which(cover_data$taxon == "rushes")])
+```
+nope
+
+
+
+```{r}
+ad.test(x = cover_data$cover[which(cover_data$taxon == "grasses")])
+```
+nope
+
+
+```{r}
+ad.test(x = cover_data$cover[which(cover_data$taxon == "bryophytes")])
+```
+well, yes
+
+
+```{r}
+ad.test(x = cover_data$cover[which(cover_data$taxon == "sedges")])
+```
+no way
+
+
+```{r}
+ad.test(x = cover_data$cover[which(cover_data$taxon == "herbs")])
+```
+nah
+
+
+So basically, violates normality. 
+
+oh, wait, lets transform: start again: 
+
+plot data
+```{r}
+ggplot(cover_data, aes(x = log(cover))) +
+  geom_histogram() +
+  facet_grid(facets = ~taxon)
+```
+
+hard to say
+
+
+###Anderson Darling test
+
+Anderson Darling composite test for normality: **if the p-value is < 0.05 then reject hypothesis that the distribution is normal**
+
+
+```{r}
+ad.test(x = log(cover_data$cover[which(cover_data$taxon == "rushes")]))
+```
+nope
+
+
+
+```{r}
+ad.test(x = log(cover_data$cover[which(cover_data$taxon == "grasses")]))
+```
+nope
+
+
+```{r}
+ad.test(x = log(cover_data$cover[which(cover_data$taxon == "bryophytes")]))
+```
+worse
+
+
+```{r}
+ad.test(x = log(cover_data$cover[which(cover_data$taxon == "sedges")]))
+```
+no way
+
+
+```{r}
+ad.test(x = log(cover_data$cover[which(cover_data$taxon == "herbs")]))
+```
+noope
+
+
+

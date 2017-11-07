@@ -1,0 +1,75 @@
+---
+title: "Rush Trial: data exploration 2017"
+output: html_notebook
+---
+
+Packages
+```{r}
+library(tidyverse)
+```
+
+Import data
+```{r}
+rushdata_2017 <- read.csv("../data/rushdata_2007.csv", header = TRUE)
+```
+
+
+
+Have a look at the shape of the data
+
+```{r}
+rushdata_2017
+```
+
+Drop species level data
+
+```{r}
+cover_data <- rushdata_2017[,c("site_type", "type", "replicate", "quad", 
+                               "treat_plot", "year", "rush_cov", "grass_cov", "herb_cov", 
+                               "sedge_cov", "bryo_cov", "litter", "bare_grd")]
+cover_data
+```
+
+tabulate rush cover: 
+
+```{r}
+cover_data %>% 
+  group_by(treat_plot, site_type) %>% 
+  summarise(avg = mean(rush_cov), sd = sd(rush_cov)) 
+```
+
+gather cover values
+ 
+```{r}
+cover_data <- cover_data %>% 
+  rename(rushes = rush_cov, grasses = grass_cov, herbs = herb_cov, 
+         sedges = sedge_cov, bryophytes = bryo_cov) %>% 
+  gather(key = "taxon", value = "cover", rushes:bare_grd)
+cover_data
+```
+
+check
+```{r}
+unique(cover_data$taxon)
+```
+
+
+
+
+plot
+
+```{r}
+ggplot(cover_data, aes(x = treat_plot)) +
+  geom_boxplot(aes(y = cover)) +
+  facet_wrap(facets = ~taxon)
+
+```
+
+export data
+```{r}
+write.csv(cover_data, "../data/cover_data.csv", row.names = FALSE)
+```
+
+
+
+
