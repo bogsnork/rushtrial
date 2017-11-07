@@ -299,6 +299,8 @@ rushdata$litter[is.na(rushdata$litter)] <-
 rushdata$litter2 <- NULL
 table(rushdata$litter, useNA = "ifany")
 
+
+
 # Final prettyfication ----
 
 # reorganise
@@ -306,6 +308,17 @@ startcols <- c("location", "type", "replicate", "treatment", "treat_plot",
                "quad", "year" ,"date", "surveyor")
 rushdata <- select(rushdata, one_of(startcols),everything())
 
+# Abbreviate species names 
+#make species list lookup
+head(names(rushdata), 20) #check where species start
+#spp start at col 17
+spp_list <- data.frame(names(rushdata)[17:ncol(rushdata)])
+names(spp_list) <- "spp_name"
+spp_list$spp_abbr <- vegan::make.cepnames(spp_list$spp_name)
+duplicated(spp_list$spp_abbr)
+
+#rename species columns
+names(rushdata)[17:ncol(rushdata)] <- spp_list$spp_abbr
 
 
 #sort out classes

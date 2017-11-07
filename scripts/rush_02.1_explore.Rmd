@@ -36,3 +36,49 @@ This shows all the data for rush cover estimates, with 'violin plots' around the
 
 BBBut: zeroes are missing.  V imp.  
 
+
+##Look at 2015 variability
+
+subset 2015 data
+```{r}
+data_2015 <- filter(rushdata, year == 2015)
+names(data_2015)[c(1:20, ncol(data_2015))]
+spp_data_2015 <- gather(data_2015, key = "species", value = "cover", Achimill:Veroserp.2, na.rm = TRUE)
+spp_data_2015 <- select(spp_data_2015, -c(rushes:litter))
+```
+
+
+graph an example plot
+```{r}
+ggplot(filter(spp_data_2015, location == "HP", replicate == "A", treatment == "P1"), 
+       aes(y = cover, x = quad)) +
+  geom_bar(aes(colour = species), stat = "identity", position = "stack") 
+```
+
+not sure this tells me much.  far too confusing.  I want to show each species as a unique unit, but not necessarily identify whihc species it is.  
+
+```{r}
+# the categorical data 
+var <- spp_data_2015 %>% 
+  filter(location == "HP", quad == "51") %>% 
+  select(species, cover)
+
+## Prep data 
+nrows <- 10
+var$cover <- var$cover * nrows^2 / 100
+
+df <- expand.grid(y = 1:nrows, x = 1:nrows)
+df$category <- factor(c(rep(var$species, var$cover), 
+                      rep(NA, nrows^2-length(rep(var$species, var$cover)))))  
+# NOTE: if sum(var$cover) is not 100 (i.e. nrows^2), it will need adjustment to make the sum to 100.
+
+ggplot(df, aes(x = x, y = y, fill = category)) + 
+  geom_tile(color = "black", size = 0.5) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0), trans = 'reverse') +
+  labs(title="Waffle Chart", subtitle="'relative cover of species in a quadrat") + 
+  scale_fill_discrete(na.value = "transparent")+
+  theme_void()
+  
+```
+
