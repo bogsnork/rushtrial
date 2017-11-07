@@ -1,0 +1,38 @@
+---
+title: "Rush Trial: data exploration 2017"
+output: html_notebook
+---
+
+Packages
+```{r}
+library(tidyverse)
+```
+
+Import data
+```{r}
+rushdata <- read.csv("../data/rushdata.csv", header = TRUE)
+```
+
+
+plotty plotty
+
+```{r}
+ggplot(rushdata, aes(x = treatment, y = rushes)) + 
+  geom_boxplot(aes(colour = year))
+
+```
+
+
+```{r}
+ggplot(rushdata, aes(x = treat_plot, y = rushes)) + 
+  geom_violin(aes(colour = year)) +
+  geom_dotplot(aes(fill = year, colour = year), binaxis='y', stackdir='center', dotsize=0.9, 
+               position = position_dodge(width = 0.9)) +
+  #geom_point(aes(colour = year), position = position_dodge(width = 1)) +
+  facet_wrap(facets = ~ location)
+```
+This shows all the data for rush cover estimates, with 'violin plots' around them.  
+
+
+BBBut: zeroes are missing.  V imp.  
+
