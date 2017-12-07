@@ -1,7 +1,6 @@
 ---
 title: 'Rush Trial: data exploration 2017'
 output:
-  word_document: default
   html_notebook: default
 ---
 

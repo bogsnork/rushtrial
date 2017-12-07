@@ -104,14 +104,6 @@ species_2015 <- rbind(meadows_2015_t, pastures_2015_t)
 
 
 
-
-
-
-
-
-
-
-
 # clean columns
 #convert to upper case
 rushdata$site <- toupper(rushdata$site)
@@ -274,6 +266,14 @@ rushdata <- mutate_at(rushdata, funs(as.factor),
 rushdata <- mutate_at(rushdata, funs(as.numeric), .vars = 10:ncol(rushdata))
 #date still an issue
 
+#remove stray column X
+rushdata$X <- NULL
+
+
+#add zeroes to species observations
+rushdata[10:ncol(rushdata)][is.na(rushdata[10:ncol(rushdata)])] <- 0
+
+
 # export -----
-write.csv(rushdata, "data/rushdata.csv")
+write.csv(rushdata, "data/rushdata.csv", row.names = FALSE)
 

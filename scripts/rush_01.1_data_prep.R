@@ -17,15 +17,8 @@ library(lubridate)
 #Import data-----
 
 
-##2015
-excel_sheets("data/2015 Rush Trial Data completed.XLSX")
 
-meadows_2015 <- read_excel("data/2015 Rush Trial Data completed.XLSX", 
-                           sheet = "Meadows", col_names = FALSE, skip = 3)
 
-pastures_2015 <- read_excel("data/2015 Rush Trial Data completed.XLSX", 
-                            sheet = "Pastures", col_names = FALSE, skip = 3)
-#NO TAXON SUMMARIES AVAILABLE
 
 ##2015
 excel_sheets("data/2015 Rush Trial Data completed.XLSX")
