@@ -1,0 +1,60 @@
+---
+title: 'Rush Trial: explore experiment design'
+output:
+  html_notebook: default
+---
+
+#Packages
+```{r}
+library(tidyverse)
+```
+
+#Import data
+```{r}
+rushdata <- read.csv("../data/rushdata.csv", header = TRUE)
+```
+
+
+#Explore data
+
+```{r}
+rushdata
+```
+
+fix column classes
+```{r}
+rushdata <- rushdata %>% 
+  select(-X) %>% #remove first column
+  mutate_at(funs(as.factor), .vars = 1:5)
+  
+```
+
+
+data structure
+```{r}
+datastr <- select(rushdata, year:quad)
+datastr
+```
+
+```{r}
+datastr %>% 
+  group_by(year, location, replicate, treat_plot) %>% 
+  count()
+```
+
+```{r}
+datastr %>% 
+  group_by(year, location, treat_plot) %>% 
+  count()
+```
+
+```{r}
+ggplot(datastr, aes(treat_plot)) +
+  geom_histogram(aes(fill = replicate), 
+                 stat = "count") +
+  facet_wrap(c("year", "location")) +
+  scale_y_continuous(breaks = seq(1:9), minor_breaks = FALSE) +
+  coord_flip()
+```
+
+
