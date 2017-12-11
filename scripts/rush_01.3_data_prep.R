@@ -119,6 +119,7 @@ rushdata_2017$X__1 <-
                 "Treatment Plot (1-8)" = "Treatment Plot", 
                 "Replicate (A/B/C)" = "Replicate number")
 
+
 rushdata_2017[1,] <- toupper(paste0(rushdata_2017[1,], rushdata_2017[2,]))
 
 rushdata_2017$X__1 <- as.character(rushdata_2017$X__1)
@@ -322,5 +323,5 @@ rownames(rushdata) <- uid
 
 
 # export -----
-write.csv(rushdata, "data/rushdata.csv", row.names = TRUE)
-
+write.csv(rushdata, "data/rushdata_w.csv", row.names = TRUE)
+write.csv(spp_groups, "data/spp_groups.csv", row.names = FALSE)

@@ -1,9 +1,9 @@
 library(tidyverse)
+library(vegan)
 
-rushdata <- read.csv("../data/rushdata.csv", header = TRUE)
+rushdata <- read.csv("data/rushdata_w.csv", header = TRUE, row.names = 1)
 
 rushdata <- rushdata %>% 
-  select(-X) %>% #remove first column
   mutate_at(funs(as.factor), .vars = 1:5)
 
 # Abbreviate species names 
@@ -235,9 +235,10 @@ rushdata$Veronica.serpyllifolia[is.na(rushdata$Veronica.serpyllifolia)] <-
 rushdata$Veronica.serpyllifolia.1 <- NULL
 
 # Abbreviate species names 
+
 #make species list lookup
 head(names(rushdata), 20) #check where species start
-#spp start at col 17
+#spp start at col 6
 spp_list <- data.frame(names(rushdata)[6:ncol(rushdata)])
 names(spp_list) <- "spp_name"
 spp_list$spp_abbr <- vegan::make.cepnames(spp_list$spp_name)
@@ -262,3 +263,23 @@ rushdata[6:ncol(rushdata)][is.na(rushdata[6:ncol(rushdata)])] <- 0
 
 #have a look
 VIM::matrixplot(rushdata, labels = names(rushdata))
+
+
+# make unique id again
+uid <- paste(rushdata$location, rushdata$treat_plot, rushdata$replicate, 
+             rushdata$quad, rushdata$year, sep = ".")
+dupes <- uid[which(duplicated(uid))]
+uid[which(uid %in% dupes)]
+#all clear
+
+
+#add uid to rushdata rownames
+
+rownames(rushdata) <- uid
+
+
+# export -----
+write.csv(rushdata, "data/rushdata_w.csv", row.names = TRUE)
+write.csv(spp_list, "data/spp_list.csv", row.names = FALSE)
+
+
