@@ -78,7 +78,7 @@ rushgroups_g <- rushdata_g %>%
 #by group, spread
 rushgroups <- rushdata_g %>%
   select(uid, year, replicate, location, treat_plot, quad, cover, species_group) %>%  
-  group_by(uid, species_group) %>% 
+  group_by(uid, year, replicate, location, treat_plot, quad, species_group) %>% 
   summarise(cover = sum(cover)) %>% 
   spread(species_group, cover) %>% 
   mutate(cover_tot = sum(grass, herb, moss, sedge, woodrush, horsetail, rush))
@@ -343,7 +343,7 @@ rm(grpdata_2016, grpdata_2017, HM_2017, HP_2017, VP_2017, LM_2017,
    meadows_2016, pastures_2016, rushdata, colnames_rush, dupes, grps)
 
 # export -----
-write.csv(grpdata, "data/taxon_group_est_w.csv", row.names = TRUE)
+write.csv(grpdata, "data/taxon_group_est_w.csv", row.names = FALSE)
 write.csv(rushgroups, "data/taxon_group_calc_w.csv", row.names = FALSE)
 write.csv(rushgroups_g, "data/taxon_group_calc_g.csv", row.names = FALSE)
 write.csv(rush_tot_cover, "data/taxon_cov_total.csv", row.names = FALSE)
