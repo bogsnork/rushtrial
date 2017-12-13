@@ -1,0 +1,243 @@
+---
+title: "Rush Trial: explore baseline"
+output: html_notebook
+---
+#load packages
+```{r}
+library(tidyverse)
+library(vegan)
+library(vegan3d)
+```
+
+#load data
+
+```{r}
+spp_obs <- read.csv("../data/prepped/spp_obs_w.csv", header = TRUE)
+spp_obs$X <- NULL
+```
+
+#prepare data
+filter out just the baseline year and only pasture
+
+```{r}
+spp_obs <- filter(spp_obs, year == "2015")
+spp_obs <- filter(spp_obs, type == "pasture")
+```
+
+split observations and site data
+
+```{r}
+species <- spp_obs[8:ncol(spp_obs)]
+site <- spp_obs[1:7]
+```
+
+remove empty species
+```{r}
+species <- species[,-which(colSums(species) == 0)]
+```
+
+maybe remove species occuring in only one quadrat
+```{r}
+species_g <- species %>% 
+  gather(key = "species", value = "cover") %>% 
+  filter(cover > 0)
+
+
+species_g %>% 
+  group_by(species) %>% 
+  count() %>% 
+  filter(n < 5)
+```
+hmm, not sure
+
+how about maybe remove species that are under a particular cover threshold: 
+```{r}
+species_g <- species %>% 
+  gather(key = "species", value = "cover") %>% 
+  filter(cover > 0)
+
+
+species_g %>% 
+  group_by(species) %>% 
+  summarise(cov_sum = sum(cover)) %>% 
+  filter(cov_sum < 10)
+```
+
+not now
+
+#clustering
+
+```{r}
+#create distance matrix
+dist_spp <- vegdist(species)
+
+#visualise
+
+#single linkage clustering
+csin <- hclust(dist_spp, method="single")
+csin
+plot(csin, hang=-1)
+
+#complete linkage 
+ccom <- hclust(dist_spp, method="complete")
+ccom
+plot(ccom, hang=-1)
+
+#average linkage 
+caver <- hclust(dist_spp, method="aver")
+caver
+plot(caver, hang=-1)
+```
+
+
+description of classes
+community tables ordered by a dendrogram, ordination or environmental
+variables
+```{r}
+#vegemite(species, caver)
+
+#doesn't work because cover values are longer than 1.  suggested I use 'scale' but I don't know if I really need this
+```
+
+Number of classes
+ change `n.class` to change number of classes
+```{r}
+n.class <- 10
+plot(csin, hang=-1)
+rect.hclust(csin, n.class)
+plot(ccom, hang=-1)
+rect.hclust(ccom, n.class)
+plot(caver, hang=-1)
+rect.hclust(caver, n.class)
+```
+
+extract cluster identities
+```{r}
+cl <- cutree(ccom, n.class)
+cl
+```
+
+extract cluster identities
+```{r}
+cl <- cutree(ccom, n.class)
+
+clusters <- site
+clusters$cl.ccom <- cl
+
+clusters %>% 
+  arrange(cl.ccom)
+```
+
+Ordination and clustering
+
+metric scaling a.k.a. principal coordinates analysis
+(PCoA) that maps observed dissimilarities linearly onto low-dimensional graph
+using the same dissimilarities we had in our clustering.
+
+```{r}
+ord <- cmdscale(dist_spp)
+ordiplot(ord)
+ordihull(ord, cl, lty=3)
+ordispider(ord, cl, col="blue", label=TRUE)
+ordiellipse(ord, cl, col="red")
+
+```
+
+
+
+Manipulating dendrogram
+
+```{r}
+den <- as.dendrogram(caver)
+```
+
+In the following we rearrange the dendrogram so that the ordering of leaves
+corresponds as closely as possible with the first ordination axis:
+
+```{r}
+x <- scores(ord, display = "sites", choices = 1)
+oden <- reorder(den, x)
+#We plot the dendrorgrams together:
+par(mfrow=c(2,1))
+plot(den)
+plot(oden)
+par(mfrow=c(1,1))
+```
+
+
+The vegemite function has a graphical sister function tabasco2
+that can also
+display the dendrogram. Moreover, it defaults to rerrange the dendrogram by
+the first axis of Correspondence Analysis:
+```{r}
+tabasco(x = species)#, caver)
+```
+
+```{r}
+species[which(rowSums(species)<=0),]
+```
+
+#Ordination
+
+```{r}
+library(vegan)
+library(MASS)
+```
+
+DECORANA
+```{r}
+dca.1 <- decorana(species) #carry out ordination
+dca.1
+```
+
+Non-metric Multidimensional scaling
+```{r}
+mds.1 <- metaMDS(dist_spp)
+```
+
+
+
+```{r}
+ordiplot(dca.1, display = "sites", type = "points")
+ordiplot(mds0.1, display = "sites", type = "t")
+```
+
+# Constrained ordination
+
+Canonical Correspondence Analysis
+```{r}
+cca.1 <- cca(species ~ location + treat_plot, site)
+cca.1
+```
+
+```{r}
+plot(cca.1, display = "sites")
+```
+
+3d
+```{r}
+ordiplot3d(cca.1,display = "sites", type = "h")
+ordirgl(cca.1, cex = 0.5)
+```
+
+
+amazing 3d
+
+```{r}
+if (interactive() && require(rgl, quietly = TRUE)) {
+  ord <- rda(decostand(species, "hellinger"))
+  ordirgl(ord, size=4, col = "yellow")
+  orgltext(ord, display = "sites")
+  with(site, ordirgl(ord, col = as.numeric(treat_plot), scaling = "sites"))
+  ## orglspider & orglellipse: col by groups
+  with(site, orglspider(ord, location, col = 1:3, scaling = "sites"))
+#  with(site, orglellipse(ord, location, col = 1:3, kind = "se", 
+#                         conf = 0.95, scaling = "sites"))
+}
+```
+
+
+
+
+
+
