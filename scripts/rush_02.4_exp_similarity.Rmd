@@ -1,0 +1,165 @@
+---
+title: "Rush Trial: baseline similarity indices"
+output: html_notebook
+---
+
+#load packages
+```{r}
+library(tidyverse)
+library(vegan)
+library(vegan3d)
+library(ecodist)
+```
+
+#load data
+
+```{r}
+spp_obs <- read.csv("../data/prepped/spp_obs_w.csv", header = TRUE)
+spp_obs$X <- NULL
+```
+
+#prepare data
+filter out just the baseline year 
+```{r}
+spp_obs <- filter(spp_obs, year == "2015")
+```
+
+split observations and site data
+```{r}
+species <- spp_obs[8:ncol(spp_obs)]
+site <- spp_obs[1:7]
+```
+
+remove empty species
+```{r}
+species <- species[,-which(colSums(species) == 0)]
+```
+
+#Calculate similarity
+
+##Create distance matrices
+```{r}
+dist_all<- vegdist(species, method = "bray", binary = TRUE) #use cover values: binary = F 
+                                                            #use pres/abs: binary = T
+hist(dist_all)
+boxplot(dist_all)
+```
+
+
+hang on, the dist_all matrix includes all comparisons, so I can turn it into a matrix object, then subset...
+```{r}
+dist_mat <- as.matrix(dist_all)
+
+dist_mead <- as.dist(dist_mat[
+  which(site$type == "meadow"),
+  which(site$type == "meadow")
+])
+range(dist_mead)
+
+dist_past <- as.dist(dist_mat[
+  which(site$type == "pasture"),
+  which(site$type == "pasture")
+])
+
+
+dist_HP <- as.dist(dist_mat[
+  which(site$location == "HP"),
+  which(site$location == "HP")
+])
+
+dist_VP <- as.dist(dist_mat[
+  which(site$location == "VP"),
+  which(site$location == "VP")
+])
+
+
+dist_HP <- as.dist(dist_mat[
+  which(site$location == "HP"),
+  which(site$location == "HP")
+])
+
+dist_HM <- as.dist(dist_mat[
+  which(site$location == "HM"),
+  which(site$location == "HM")
+])
+
+
+dist_HP <- as.dist(dist_mat[
+  which(site$location == "HP"),
+  which(site$location == "HP")
+])
+
+dist_LM <- as.dist(dist_mat[
+  which(site$location == "LM"),
+  which(site$location == "LM")
+])
+
+
+```
+
+make a dataframe with distance results for comparison
+```{r}
+dist_df <- cbind(dist = c(dist_all, dist_mead, dist_past), 
+                 comparison = c(rep("all", length(dist_all)),
+                                rep("meadow", length(dist_mead)), 
+                                rep("pasture", length(dist_past))))
+dist_df <- as.data.frame(dist_df)
+dist_df$dist <- as.character(dist_df$dist)
+dist_df$dist <- as.numeric(dist_df$dist)
+```
+
+plot it
+```{r}
+boxplot(dist_df$dist ~ dist_df$comparison)
+boxplot(dist_df$dist[which(dist_df$comparison == "all")])
+```
+
+do it again for locations
+```{r}
+dist_df_mead <- cbind(dist = c(dist_mead, dist_HM, dist_LM), 
+                 comparison = c(rep("all_mead", length(dist_all)),
+                                rep("HM", length(dist_HM)), 
+                                rep("LM", length(dist_LM))))
+dist_df_mead <- as.data.frame(dist_df_mead)
+dist_df_mead$dist <- as.character(dist_df_mead$dist)
+dist_df_mead$dist <- as.numeric(dist_df_mead$dist)
+
+boxplot(dist_df_mead$dist ~ dist_df_mead$comparison)
+```
+
+```{r}
+dist_df_past <- cbind(dist = c(dist_past, dist_HP, dist_VP), 
+                 comparison = c(rep("all_past", length(dist_past)),
+                                rep("HP", length(dist_HP)), 
+                                rep("VP", length(dist_VP))))
+dist_df_past <- as.data.frame(dist_df_past)
+dist_df_past$dist <- as.character(dist_df_past$dist)
+dist_df_past$dist <- as.numeric(dist_df_past$dist)
+
+boxplot(dist_df_past$dist ~ dist_df_past$comparison)
+```
+
+```{r}
+dist_past_HP <- sapply(seq(1:8), function(tp) 
+  as.dist(dist_mat[
+    which(site$location == "HP" & site$treat_plot == tp),
+    which(site$location == "HP" & site$treat_plot == tp)
+    ]))
+
+
+
+boxplot(dist_past_HP)
+
+dist_df_past_HP <- cbind(dist = c(dist_past, dist_HP, c(dist_past_HP)), 
+                 comparison = c(rep("all_past", length(dist_past)),
+                                rep("all_HP", length(dist_HP)), 
+                                rep(1:8, each = nrow(dist_past_HP))
+                                ))
+dist_df_past_HP <- as.data.frame(dist_df_past_HP)
+dist_df_past_HP$dist <- as.character(dist_df_past_HP$dist)
+dist_df_past_HP$dist <- as.numeric(dist_df_past_HP$dist)
+
+boxplot(dist_df_past_HP$dist ~ dist_df_past_HP$comparison)
+```
+```
+

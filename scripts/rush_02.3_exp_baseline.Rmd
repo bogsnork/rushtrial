@@ -69,7 +69,7 @@ not now
 
 ```{r}
 #create distance matrix
-dist_spp <- vegdist(species)
+dist_spp <- vegdist(species, method = "bray")
 
 #visualise
 
