@@ -1,0 +1,207 @@
+---
+title: 'Rush Trial: data exploration 2017'
+output:
+  html_document:
+    keep_md: yes
+  html_notebook: default
+---
+
+Packages
+```{r}
+library(tidyverse)
+library(skimr)
+library(funModeling)
+```
+
+Import data
+```{r}
+grp_calc_w <- read.csv("../data/prepped/taxon_grp_calc_w.csv", header = TRUE)
+```
+
+```{r}
+#drop unwanted columns
+data_taxa <- grp_calc_w %>% 
+  select(-c(X, uid)) 
+
+#make categories factors
+data_taxa <- data_taxa %>% 
+  mutate_at(c("year", "treat_plot"), as.factor)
+
+skim(data_taxa)  
+funModeling::plot_num(data_taxa) #plot numeric variables
+funModeling::profiling_num(data_taxa) %>% pander() #instead of pander use kable()
+funModeling::correlation_table(data = data_taxa, target = "treat_plot") #correlation coefficient (pearsons R)
+```
+
+
+filter by year and type
+```{r}
+# data_taxa <- filter(data_taxa, year == "2015", type == "meadow")
+# 
+# #drop unused factors
+# data_taxa <- droplevels(data_taxa)
+# 
+# skim(data_taxa)
+
+```
+
+# Analysis
+
+##Three-way ANOVA with replication
+
+### Baseline data (2015) 
+```{r}
+model_rush <- aov(data = filter(data_taxa, year == "2015"),#, type == "meadow"), 
+                  formula = rush ~ type + location + replicate + treat_plot) 
+
+model_rush_int <- aov(data = filter(data_taxa, year == "2015"),#, type == "meadow"), 
+                      formula = rush ~ type * location * replicate * treat_plot) 
+
+summary(model_rush)
+
+summary(model_rush_int)
+```
+There is significant difference between types (meadow and pasture).  So lets look at meadow and pasture separately: 
+
+Meadow:
+```{r}
+model_rush_int <- aov(data = filter(data_taxa, year == "2015", type == "meadow"), 
+                      formula = rush ~ location * replicate * treat_plot) 
+
+summary(model_rush_int)
+```
+There is no significant difference in the main effects, but there is  in the interaction between location and treatment, and replicate and treatment.  
+
+post hoc
+```{r}
+mead_tuk <- TukeyHSD(model_rush_int, "location:treat_plot")
+mead_tuk <- data.frame(mead_tuk$`location:treat_plot`)
+mead_tuk %>% arrange(p.adj)
+```
+only between one combination of 
+
+####Pasture:
+```{r}
+model_rush_int <- aov(data = filter(data_taxa, year == "2015", type == "pasture"), 
+                      formula = rush ~ location * replicate * treat_plot) 
+
+summary(model_rush_int)
+```
+There is no significant difference in the main effects, but there is  in the interaction between location and treatment, and replicate and treatment.  
+
+post hoc
+```{r}
+TukeyHSD(model_rush_int, "location:treat_plot")
+```
+
+###Looking at year as a factor
+
+#meadow
+```{r}
+model_rush <- aov(data = filter(data_taxa, type == "meadow"), 
+                  formula = rush ~ location + replicate + treat_plot + year) 
+
+model_rush_int <- aov(data = filter(data_taxa, type == "meadow"), 
+                      formula = rush ~ location * replicate * treat_plot * year) 
+
+summary(model_rush)
+
+summary(model_rush_int)
+```
+
+
+```{r}
+model_rush <- aov(data = filter(data_taxa, type == "meadow"), 
+                  formula = rush ~ treat_plot + year) 
+
+model_rush_int <- aov(data = filter(data_taxa, type == "meadow"), 
+                      formula = rush ~ treat_plot * year) 
+
+summary(model_rush)
+
+summary(model_rush_int)
+```
+
+
+post hoc
+```{r}
+TukeyHSD(model_rush, "treat_plot")
+```
+
+#pasture
+```{r}
+model_rush <- aov(data = filter(data_taxa, type == "pasture"), 
+                  formula = rush ~ location + replicate + treat_plot + year) 
+
+model_rush_int <- aov(data = filter(data_taxa, type == "pasture"), 
+                      formula = rush ~ location * replicate * treat_plot * year) 
+
+summary(model_rush)
+
+summary(model_rush_int)
+```
+
+
+```{r}
+model_rush <- aov(data = filter(data_taxa, type == "pasture"), 
+                  formula = rush ~ treat_plot + year) 
+
+model_rush_int <- aov(data = filter(data_taxa, type == "pasture"), 
+                      formula = rush ~ treat_plot * year) 
+
+summary(model_rush)
+
+summary(model_rush_int)
+```
+No sign diffs at all. 
+
+
+
+##Nested design
+
+`replicate` is nested within `type`.  `treat-plot` is not? nested because ??? .  Hang on, is treat-plot actually two variables - or is replicate a variable at all ???? aaaagh
+
+###TWo-level nested design ANOVA
+
+`/` means a factor is nested in another. (Dytham p197)
+```{r}
+
+model_rush <- aov(data = filter(data_taxa, year == "2015", type == "meadow"), 
+                  formula = rush ~ location/replicate + treat_plot) 
+
+
+summary(model_rush)
+```
+
+
+
+```{r}
+
+model_rush <- aov(data = filter(data_taxa, type == "meadow"), 
+                  formula = rush ~ location/replicate + treat_plot + year) 
+
+
+summary(model_rush)
+```
+
+
+###repeated measures ANOVA 
+
+But error needs to be specified differently because `year` is a repeated measure (Dytham p128)
+```{r}
+
+model_rush <- aov(data = filter(data_taxa, type == "meadow"), 
+                  formula = rush ~ treat_plot + location * year + Error(rush/((treat_plot + location) * year))) 
+
+
+summary(model_rush)
+```
+
+(Mangiafico, S)[https://rcompanion.org/rcompanion/d_07.html]
+
+
+
+
+
+
+
