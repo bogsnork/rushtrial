@@ -1,0 +1,143 @@
+---
+title: "Rush Trial: data exploration: taxa"
+output:  #html_notebook
+  html_document:
+    keep_md: yes
+---
+
+Packages
+```{r}
+library(tidyverse)
+library(skimr)
+library(funModeling)
+```
+
+
+Import data
+```{r}
+grp_calc_w <- read.csv("../data/prepped/taxon_grp_calc_w.csv", header = TRUE)
+```
+
+```{r}
+#drop unwanted columns
+data_taxa <- grp_calc_w %>% 
+  select(-c(X, uid)) 
+
+#make categories factors
+data_taxa <- data_taxa %>% 
+  mutate_at(c("year", "treat_plot"), as.factor)
+
+skim(data_taxa)  
+funModeling::plot_num(data_taxa) #plot numeric variables
+funModeling::profiling_num(data_taxa) %>% pander() #instead of pander use kable()
+funModeling::correlation_table(data = data_taxa, target = "year") #correlation coefficient (pearsons R)
+```
+
+
+  
+
+
+```{r}
+plotdata <- filter(data_taxa, type == "meadow")
+ggplot(plotdata, 
+       aes(x = year, y = rush)) +
+#  geom_boxplot() +
+  geom_point() +
+  facet_wrap(~ treat_plot) +
+  labs(title = "Rush cover over time")
+```
+
+
+
+```{r}
+plotdata <- data_taxa %>% 
+  select(-cover_tot) %>% 
+  gather(key = "taxon", value = "cover", grass:woodrush) %>% 
+  filter(type == "meadow")
+
+  ggplot(plotdata, 
+       aes(x = year, y = cover)) +
+  geom_boxplot() +
+  facet_grid(treat_plot ~ taxon) +
+  labs(title = "cover over time") +
+  theme(axis.ticks = element_blank(), axis.text.x = element_blank(), legend.position = "none")
+```
+
+with linear model
+```{r}
+plotdata <- data_taxa %>% 
+  filter(type == "meadow") %>% 
+  mutate_at(.$year, as.numeric) %>% 
+  select(-cover_tot) %>% 
+  gather(key = "taxon", value = "cover", grass:woodrush) 
+
+ggplot(plotdata, 
+       aes(x = year, y = cover)) +
+ geom_boxplot(aes(group = year)) +
+  #geom_point()
+   geom_smooth(method = "lm", se = FALSE)   +
+  facet_grid(taxon ~ treat_plot) +
+  scale_x_continuous(breaks=c(2015, 2016, 2017))+
+  labs(title = "cover over time") 
+```
+
+with linear model: remove smaller spp
+```{r}
+plotdata <- data_taxa %>% 
+  filter(type == "meadow") %>% 
+  mutate_at(.$year, as.numeric) %>% 
+  select(-one_of(c("woodrush", "moss", "horsetail", "cover_tot"))) %>% 
+  gather(key = "taxon", value = "cover", grass:sedge) 
+
+meadow.sm <- ggplot(plotdata, 
+       aes(x = year, y = cover)) +
+ geom_boxplot(aes(group = year)) +
+  #geom_point()
+   geom_smooth(method = "lm", se = FALSE)   +
+  scale_x_continuous(breaks=c(2015, 2016, 2017)) +
+  facet_grid(taxon ~ treat_plot) +
+  labs(title = "cover over time: meadow")
+meadow.sm
+ggsave(meadow.sm, filename = "../outputs/meadow.sm.png")
+```
+
+with linear model: remove smaller spp: pasture
+```{r}
+plotdata <- data_taxa %>% 
+  filter(type == "pasture") %>% 
+  mutate_at(.$year, as.numeric) %>% 
+  select(-one_of(c("woodrush", "moss", "horsetail", "cover_tot"))) %>% 
+  gather(key = "taxon", value = "cover", grass:sedge) 
+
+pasture.sm <- ggplot(plotdata, 
+       aes(x = year, y = cover)) +
+ geom_boxplot(aes(group = year)) +
+  #geom_point()
+   geom_smooth(method = "lm", se = FALSE)   +
+  scale_x_continuous(breaks=c(2015, 2016, 2017)) +
+  facet_grid(taxon ~ treat_plot) +
+  labs(title = "cover over time: pasture")
+pasture.sm
+ggsave(pasture.sm, filename = "../outputs/pasture.sm.png")
+```
+
+
+just rushes
+```{r}
+plotdata <- data_taxa %>% 
+  filter(type == "meadow") %>% 
+  mutate_at(.$year, as.numeric)
+
+ggplot(plotdata, 
+       aes(x = year, y = rush)) +
+ geom_boxplot(aes(group = year)) +
+  #geom_point()
+   geom_smooth(method = "lm", se = FALSE)   +
+  facet_grid(. ~ treat_plot) +
+  labs(title = "rush cover over time") 
+```
+
+
+
+
+
