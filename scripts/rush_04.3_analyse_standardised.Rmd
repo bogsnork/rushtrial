@@ -1,0 +1,86 @@
+---
+title: 'Rush Trial: analyse standardised change'
+output:  #html_notebook
+  html_document:
+    keep_md: yes
+
+---
+
+Packages
+```{r}
+library(tidyverse)
+library(skimr)
+library(funModeling)
+```
+
+Import data
+```{r}
+grp_calc_w <- read.csv("../data/prepped/taxon_grp_calc_w.csv", header = TRUE)
+```
+
+```{r}
+#drop unwanted columns
+data_taxa <- grp_calc_w %>% 
+  select(-c(X, uid)) 
+
+#make categories factors
+data_taxa <- data_taxa %>% 
+  mutate_at(c("year", "treat_plot"), as.factor)
+
+data_taxa_long <- data_taxa %>% 
+  select(-cover_tot) %>% 
+  gather(key = "taxon", value = "cover", grass:woodrush) 
+
+head(data_taxa_long)
+
+```
+
+```{r}
+plotdata <- data_taxa_long %>% 
+  filter(location == "HP", treat_plot == "1", taxon == "rush")
+
+ggplot(data = plotdata, aes(x = year, y = cover)) +
+  geom_jitter(aes(colour = replicate), width = 0.2, height = 0.2)
+```
+
+
+```{r}
+plotdata <- data_taxa_long %>% 
+  filter(location == "HP", treat_plot == "1", taxon == "rush")
+
+ggplot(data = plotdata) +
+  geom_point(aes(x = year, y = cover))
+
+ggplot(data = plotdata, aes(x = year, y = cover)) +
+  geom_jitter(aes(colour = replicate), width = 0.2, height = 0.2)
+
+ggplot(data = plotdata, aes(x = year, y = cover, colour = replicate)) +
+  geom_smooth(aes(group = replicate), method = "lm") +
+  geom_smooth(aes(group = taxon, colour = "global"), method = "lm") +
+  geom_jitter(width = 0.2, height = 0.2) 
+```
+
+
+standardise mean to zero
+```{r}
+plotdata <- data_taxa_long %>% 
+  filter(location == "HP", treat_plot == "1", taxon == "herb")
+
+#calculate mean of baseline year: 
+baseMean <- plotdata %>% 
+  filter(year == "2015") %>% 
+  summarise(mean = mean(cover))  
+
+plotdata <- mutate(plotdata, cover_adj = cover - baseMean[1,1])
+
+ggplot(data = plotdata) +
+  geom_point(aes(x = year, y = cover_adj), position = "jitter")
+
+ggplot(data = plotdata, aes(x = year, y = cover_adj, colour = replicate)) +
+  geom_smooth(aes(group = replicate), method = "lm") +
+  geom_smooth(aes(group = taxon, colour = "global"), method = "lm") +
+  geom_jitter(width = 0.2, height = 0.2) 
+```
+
+why are the slopes different to the non-standardised data????
+
