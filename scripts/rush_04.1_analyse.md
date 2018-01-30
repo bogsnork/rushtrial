@@ -1001,6 +1001,55 @@ summary(model_rush)
 
 
 
+```r
+summary(aov(data = filter(data_taxa, type == "meadow"), 
+    formula = rush ~ treat_plot))
+```
+
+```
+##              Df Sum Sq Mean Sq F value Pr(>F)  
+## treat_plot    7   2520     360    2.23  0.031 *
+## Residuals   424  68360     161                 
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
+
+
+
+
+```r
+summary(aov(data = filter(data_taxa, type == "meadow", ), 
+    formula = rush ~ treat_plot))
+```
+
+```
+##              Df Sum Sq Mean Sq F value Pr(>F)  
+## treat_plot    7   2520     360    2.23  0.031 *
+## Residuals   424  68360     161                 
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

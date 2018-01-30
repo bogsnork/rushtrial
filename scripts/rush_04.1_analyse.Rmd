@@ -1,9 +1,9 @@
 ---
 title: 'Rush Trial: data exploration 2017'
-output:
-  html_document:
-    keep_md: yes
-  html_notebook: default
+output:  html_notebook
+#  html_document:
+#    keep_md: yes
+
 ---
 
 Packages
@@ -198,6 +198,39 @@ summary(model_rush)
 ```
 
 (Mangiafico, S)[https://rcompanion.org/rcompanion/d_07.html]
+
+
+
+```{r}
+summary(aov(data = filter(data_taxa, type == "meadow"), 
+    formula = rush ~ treat_plot))
+
+```
+
+
+
+```{r}
+summary(aov(data = filter(data_taxa, type == "meadow", ), 
+    formula = rush ~ treat_plot))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

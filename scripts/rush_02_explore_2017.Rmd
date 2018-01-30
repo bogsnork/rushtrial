@@ -10,7 +10,7 @@ library(tidyverse)
 
 Import data
 ```{r}
-rushdata_2017 <- read.csv("../data/rushdata_2007.csv", header = TRUE)
+rushdata_2017 <- read.csv("../data/rushdata_2017.csv", header = TRUE)
 ```
 
 

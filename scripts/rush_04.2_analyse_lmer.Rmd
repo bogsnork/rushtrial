@@ -1,0 +1,87 @@
+---
+title: 'Rush Trial: data exploration 2017: linear mixed effects model'
+output:  #html_notebook
+  html_document:
+    keep_md: yes
+
+---
+
+Packages
+```{r}
+library(tidyverse)
+library(skimr)
+library(funModeling)
+
+library(lme4)
+library(lmerTest)
+```
+
+Import data
+```{r}
+grp_calc_w <- read.csv("../data/prepped/taxon_grp_calc_w.csv", header = TRUE)
+```
+
+```{r}
+#drop unwanted columns
+data_taxa <- grp_calc_w %>% 
+  select(-c(X, uid)) 
+
+#make categories factors
+data_taxa <- data_taxa %>% 
+  mutate_at(c("year", "treat_plot"), as.factor)
+
+skim(data_taxa)  
+funModeling::plot_num(data_taxa) #plot numeric variables
+funModeling::profiling_num(data_taxa) %>% pander() #instead of pander use kable()
+funModeling::correlation_table(data = data_taxa, target = "treat_plot") #correlation coefficient (pearsons R)
+```
+
+
+
+# Analysis
+
+A lot of this thanks to https://benwhalley.github.io/just-enough-r/fitting-models.html 
+
+**The 1 refers to an intercept, and so in English this part of the formula means ‘add a random intercept for each level of grouping’.**
+
+## add random intercepts (groupings within the data)
+
+```{r}
+model <- lmer(data = filter(data_taxa, type == "meadow"),
+              formula = rush ~ treat_plot + (1 | location))
+model
+broom::tidy(model)
+plot(model)
+```
+
+## add nesting
+
+```{r}
+model <- lmerTest::lmer(data = filter(data_taxa, type == "meadow"),
+              formula = rush ~ treat_plot + (1 | location/replicate))
+model
+summary(model)
+broom::tidy(model)
+```
+
+## add random slope (to vary by treatment)
+
+```{r}
+model <- lmerTest::lmer(data = filter(data_taxa, type == "meadow"),
+              formula = rush ~ treat_plot + (treat_plot | location/replicate/year))
+model
+summary(model)
+broom::tidy(model)
+```
+
+
+```{r}
+model <- lmerTest::lmer(data = filter(data_taxa, type == "meadow"),
+              formula = rush ~ year + (1 | location/treat_plot))
+model
+summary(model)
+broom::tidy(model)
+```
+
+
+
