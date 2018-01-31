@@ -1,0 +1,160 @@
+---
+title: 'Rush Trial: analyse one by one: non-parametric'
+output:  #html_notebook
+  html_document:
+    keep_md: yes
+
+---
+
+##Packages
+```{r}
+library(tidyverse)
+library(skimr)
+library(funModeling)
+
+library(ggpubr)   # helps make publication-ready graphs
+library(broom)    # cleans up code output from common functions
+```
+
+##Import data
+```{r}
+grp_calc_w <- read.csv("../data/prepped/taxon_grp_calc_w.csv", header = TRUE)
+```
+
+```{r}
+#drop unwanted columns
+data_taxa <- grp_calc_w %>% 
+  select(-c(X, uid)) 
+
+#make categories factors
+data_taxa <- data_taxa %>% 
+  mutate_at(c("year", "treat_plot"), as.factor)
+
+data_taxa_long <- data_taxa %>% 
+  select(-cover_tot) %>% 
+  gather(key = "taxon", value = "cover", grass:woodrush) 
+
+head(data_taxa_long)
+
+```
+
+##Test for normality
+```{r}
+
+```
+done in script rush_03_stats_2017.Rmd
+
+not normal
+
+##Test for homoscedascity
+Bartlett Test of Homogeneity of Variances: if the p-value is smaller than 0.05 then data not suitable for ANOVA
+```{r}
+#run Bartlett test for homogeneity of variances 
+bart <- bartlett.test(cover ~ year, data = data_taxa_long)
+bart
+
+bart <- bartlett.test(cover ~ treat_plot, data = data_taxa_long)
+bart
+
+```
+
+seems ok, but should I be breaking this down more???
+
+Anyway, not normally distributed, so we're going non-parametric. 
+
+## Compare means
+
+### Kruskal-Wallis rank sum test
+
+This test estimates the probability that all the samples were drawn from the same population, i.e. that the true mean is the same for each survey.  
+```{r}
+#run Kruskal Wallis test
+krusk <- data_taxa_long %>% 
+  group_by(type, location, treat_plot, taxon) %>% 
+  summarise_at(vars(cover), funs(
+    "chi-sq" = kruskal.test(. ~ year)$statistic,
+    "df" = kruskal.test(. ~ year)$parameter,
+    "p.val" = kruskal.test(. ~ year)$p.value,
+    #"method" = kruskal.test(. ~ year)$method, 
+    "formula" = kruskal.test(. ~ year)$data.name
+  )) 
+
+write.csv(krusk, file = "../outputs/kruskalTest.csv")
+
+pander(krusk, digits = 3)
+```
+The null hypothesis is that the samples are drawn from the same population, so if p is smaller than 0.05 we must reject that hypothesis. 
+
+
+The following treatment plots have shown significant change: 
+
+```{r}
+krusk.sig <- krusk %>% 
+  filter(p.val < 0.05) %>% 
+  arrange(type, treat_plot, taxon) 
+
+pander(krusk.sig, digits = 3)
+```
+
+##Graph it
+boxplot with linear model
+```{r}
+plotdata <- data_taxa %>% 
+  filter(type == "meadow") %>% 
+#  select(-one_of(c("woodrush", "moss", "horsetail", "cover_tot"))) %>% 
+  gather(key = "taxon", value = "cover", grass:woodrush) #%>% 
+#  mutate(taxon = factor(taxon, levels = c("rush", "grass", "herb", "sedge", "moss", "horsetail", "woodrush")))
+
+#Create a data frame with the faceting variables
+# and some dummy data (that will be overwritten)
+facets <- filter(krusk, type == "meadow")
+facets$year <- 1
+facets$cover <- 1
+
+
+meadow.sm <-   ggplot(plotdata, 
+                      aes(x = year, y = cover)) +
+  geom_boxplot(data = plotdata, aes(group = year)) +
+  geom_smooth(method = "lm", se = FALSE)   +
+  scale_x_discrete(labels = c("15", "16", "17")) +
+  geom_rect(data = subset(facets, p.val < 0.05), aes(fill = p.val), 
+            xmin = -Inf,xmax = Inf,
+            ymin = -Inf, ymax = Inf, alpha = 0.3) +
+  facet_grid(taxon ~ treat_plot:location, scales = "free_y") +
+  labs(title = "cover over time: meadow: kruskal wallis")
+
+meadow.sm
+ggsave(meadow.sm, filename = "../outputs/meadow.sm.krusk.png", width = 30, units = "cm", dpi = 600)
+```
+
+```{r}
+plotdata <- data_taxa %>% 
+  filter(type == "pasture") %>% 
+#  select(-one_of(c("woodrush", "moss", "horsetail", "cover_tot"))) %>% 
+  gather(key = "taxon", value = "cover", grass:woodrush) #%>% 
+#  mutate(taxon = factor(taxon, levels = c("rush", "grass", "herb", "sedge", "moss", "horsetail", "woodrush")))
+
+#Create a data frame with the faceting variables
+# and some dummy data (that will be overwritten)
+facets <- filter(krusk, type == "pasture")
+facets$year <- 1
+facets$cover <- 1
+
+
+pasture.sm <-   ggplot(plotdata, 
+                      aes(x = year, y = cover)) +
+  geom_boxplot(data = plotdata, aes(group = year)) +
+  geom_smooth(method = "lm", se = FALSE)   +
+  scale_x_discrete(labels = c("15", "16", "17")) +
+  geom_rect(data = subset(facets, p.val < 0.05), aes(fill = p.val), 
+            xmin = -Inf,xmax = Inf,
+            ymin = -Inf, ymax = Inf, alpha = 0.3) +
+  facet_grid(taxon ~ treat_plot:location, scales = "free_y") +
+  labs(title = "cover over time: pasture: kruskal wallis")
+
+pasture.sm
+ggsave(pasture.sm, filename = "../outputs/pasture.sm.krusk.png", width = 30, units = "cm", dpi = 600)
+```
+
+
+
