@@ -1,0 +1,117 @@
+---
+title: 'Rush Trial: analyse markov chains'
+output:  #html_notebook
+  html_document:
+    keep_md: yes
+
+---
+
+##Packages
+```{r, include=FALSE}
+
+library(skimr)
+library(funModeling)
+
+library(ggpubr)   # helps make publication-ready graphs
+library(broom)    # cleans up code output from common functions
+library(dave)     # vegetation ecology functions
+
+library(tidyverse)
+```
+
+##Import data
+```{r}
+grp_calc_w <- read.csv("../data/prepped/taxon_grp_calc_w.csv", header = TRUE)
+```
+
+```{r}
+#drop unwanted columns
+data_taxa <- grp_calc_w %>% 
+  select(-c(X, uid)) 
+
+#make categories factors
+data_taxa <- data_taxa %>% 
+  mutate_at(c("year", "treat_plot"), as.factor)
+
+data_taxa_long <- data_taxa %>% 
+  select(-cover_tot) %>% 
+  gather(key = "taxon", value = "cover", grass:woodrush) 
+
+head(data_taxa_long)
+
+```
+
+#Markov model
+single quadrat
+```{r}
+model_veg <- data_taxa %>% 
+  filter(location == "HM", treat_plot == "1", quad == "11") %>% 
+  mutate_at(.$year, as.numeric) %>% 
+  select(grass:woodrush)
+model_time <- data_taxa %>% 
+  filter(location == "HM", treat_plot == "1", quad == "11") %>% 
+  mutate_at(.vars = "year", .funs = as.character) %>% 
+  mutate_at(.vars = "year", .funs = as.double) %>% 
+  select(year)
+
+o.fm <- fitmarkov(veg = select(model_veg, grass, rush, herb), 
+                  t = model_time$year, 
+                  adjust = TRUE)
+o.fm$t.modeled
+plot(o.fm)
+```
+
+
+single replicate (three quads) - baseline
+```{r}
+modeldata <- data_taxa %>% 
+  filter(location == "HM", treat_plot == "1") %>% 
+  mutate_at(.vars = "year", .funs = as.character) %>% 
+  mutate_at(.vars = "year", .funs = as.double) %>% 
+  group_by(year) %>% 
+  select(year, grass:woodrush) %>%
+  summarise_all(.funs = mean) 
+
+o.fm <- fitmarkov(veg = select(modeldata, grass, rush, herb), 
+                  t = modeldata$year, 
+                  adjust = TRUE)
+o.fm$t.modeled
+plot(o.fm)
+```
+
+
+single replicate (three quads) - treatment
+```{r}
+modeldata <- data_taxa %>% 
+  filter(location == "HM", treat_plot == "6") %>% 
+  mutate_at(.vars = "year", .funs = as.character) %>% 
+  mutate_at(.vars = "year", .funs = as.double) %>% 
+  group_by(year) %>% 
+  select(year, grass:woodrush) %>%
+  summarise_all(.funs = mean) 
+
+o.fm <- fitmarkov(veg = select(modeldata, grass, rush, herb), 
+                  t = modeldata$year, 
+                  adjust = TRUE)
+o.fm$t.modeled
+plot(o.fm)
+```
+
+I'm not sure we have enough time points to use a markov model
+
+
+
+#synthetic time series
+
+example from Wildi, O. 2013. Data Analysis in Vegetation Ecology. 2nd ed. Wiley-Blackwell, Chichester.
+```{r}
+sn59veg
+sn59sit
+o.overly<- overly(sn59veg,sn59sit$Plot.no,y=0.5,sint=5)
+# Plotting (i) minimum spanning tree, (ii) temporal arrangement of time series,
+# (iii) synthetic multivariate time series
+plot(o.overly,colors=NULL,l.width=NULL)
+```
+
+
+
