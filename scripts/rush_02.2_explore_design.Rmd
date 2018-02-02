@@ -1,7 +1,8 @@
 ---
 title: 'Rush Trial: explore experiment design'
-output:
-  html_notebook: default
+output: #html_notebook
+  html_document:
+    keep_md: yes
 ---
 
 #Packages
@@ -56,5 +57,42 @@ ggplot(datastr, aes(treat_plot)) +
   scale_y_continuous(breaks = seq(1:9), minor_breaks = FALSE) +
   coord_flip()
 ```
+
+## Explore quadrat layout
+
+```{r}
+#split quadrat column into coordinates
+
+#split out letters
+quads <- as.numeric(
+  str_split(rushdata$quad, pattern = "[:alpha:]", simplify = TRUE)[,1])
+
+#pad with leading zeros
+quads <- sprintf("%02d", quads)
+quads[which(quads == "NA")] <- ""
+
+
+#create dataframe for plot data
+plotdata <- rushdata 
+plotdata$quad <- quads
+
+#split coordinates
+plotdata$quad_x <- substr(plotdata$quad, 1, 1)
+plotdata$quad_y <- substr(plotdata$quad, 2, 2)
+#head(plotdata$quad_y)
+
+plotdata <- plotdata %>% 
+  select(location, replicate, treat_plot, quad_x, quad_y, year) %>% 
+  mutate(location, location = factor(location, levels = c("HM", "LM", "HP", "VP")))
+  
+quad.struct <- ggplot(plotdata, aes(x = quad_x, y = quad_y, colour = year)) +
+  geom_point(position = "jitter") +
+  facet_grid(treat_plot ~ location:replicate)
+
+quad.struct
+
+ggsave(quad.struct, filename = "../outputs/quad.struct.png", width = 30, height = 20, units = "cm", dpi = 600)
+```
+
 
 
