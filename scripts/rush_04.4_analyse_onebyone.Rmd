@@ -1,5 +1,5 @@
 ---
-title: 'Rush Trial: analyse one by one: non-parametric'
+title: 'Rush Trial: analyse one by one:'
 output:  #html_notebook
   html_document:
     keep_md: yes
@@ -14,6 +14,8 @@ library(funModeling)
 
 library(ggpubr)   # helps make publication-ready graphs
 library(broom)    # cleans up code output from common functions
+
+library(nortest)
 ```
 
 ##Import data
@@ -32,37 +34,175 @@ data_taxa <- data_taxa %>%
 
 data_taxa_long <- data_taxa %>% 
   select(-cover_tot) %>% 
-  gather(key = "taxon", value = "cover", grass:woodrush) 
+  gather(key = "taxon", value = "cover", grass:woodrush) %>% 
+  mutate(taxon, taxon = as.factor(taxon))
 
 head(data_taxa_long)
 
 ```
 
-##Test for normality
+
+
+###Test for normality
+
+####Anderson Darling test
+Anderson Darling composite test for normality: **if the p-value is < 0.05 then reject hypothesis that the distribution is normal**
+
 ```{r}
+#run Anderson Darling test
+ad <- data_taxa_long %>% 
+  group_by(type, location, taxon) %>% 
+  summarise_at(vars(cover), funs(
+    "A" = ad.test(.)$statistic,
+    "p.val" = ad.test(.)$p.value,
+    "formula" = ad.test(.)$data.name, 
+    "n" = length(.)
+    )) %>% 
+  arrange(desc(p.val))
 
+write.csv(ad, file = "../outputs/adTest.csv")
+
+pander(filter(ad, p.val >= 0.05), digits = 3)
 ```
-done in script rush_03_stats_2017.Rmd
 
-not normal
+####Shapiro-Wilk test
+Only available between 3 and 5000 samples.  **if the p-value is < 0.05 then reject hypothesis that the distribution is normal**
+```{r}
+#run  Shapiro-Wilk test
+#doesn't seem to cope well with under represented taxa, so filtered out. 
+shapiro <- data_taxa_long %>% 
+  filter(taxon == "rush" | 
+           taxon == "grass" | 
+           taxon == "herb" | 
+           taxon == "sedge") %>% 
+  group_by(type, location, treat_plot, taxon) %>% 
+  summarise_at(vars(cover), funs(
+    "W" = shapiro.test(.)$statistic,
+    "p.val" = shapiro.test(.)$p.value,
+    "formula" = shapiro.test(.)$data.name, 
+    "n" = length(.)
+    )) %>% 
+  arrange(desc(p.val))
 
-##Test for homoscedascity
+write.csv(shapiro, file = "../outputs/shapiroTest.csv")
+
+pander(filter(shapiro, p.val >= 0.05), digits = 3)
+```
+
+###Test for homoscedascity
 Bartlett Test of Homogeneity of Variances: if the p-value is smaller than 0.05 then data not suitable for ANOVA
 ```{r}
 #run Bartlett test for homogeneity of variances 
-bart <- bartlett.test(cover ~ year, data = data_taxa_long)
-bart
 
-bart <- bartlett.test(cover ~ treat_plot, data = data_taxa_long)
-bart
+bartlett <- data_taxa_long %>% 
+  filter(taxon == "rush" | 
+           taxon == "grass" | 
+           taxon == "herb" | 
+           taxon == "sedge") %>% 
+  group_by(type, location, treat_plot, taxon) %>% 
+  summarise_at(vars(cover), funs(
+    "Ksq" = bartlett.test(. ~ year)$statistic,
+    "p.val" = bartlett.test(. ~ year)$p.value,
+    "formula" = bartlett.test(. ~ year)$data.name, 
+    "n" = length(.)
+    )) %>% 
+  arrange(desc(p.val))
 
+write.csv(bartlett, file = "../outputs/bartlettTest.csv")
+
+pander(filter(bartlett, p.val >= 0.05), digits = 3)
 ```
 
-seems ok, but should I be breaking this down more???
+## Compare means: parametric
+```{r}
+aov <- data_taxa_long %>% 
+  group_by(type, location, treat_plot, taxon) %>% 
+  summarise_at(vars(cover), funs(
+    "p.val" = tidy(aov(. ~ year))$p.value[1], 
+    "n" = length(.)
+  )) 
 
-Anyway, not normally distributed, so we're going non-parametric. 
+write.csv(aov, file = "../outputs/aov.csv")
 
-## Compare means
+pander(head(aov), digits = 3)
+```
+
+The following treatment plots have shown significant change: 
+
+```{r}
+aov.sig <- aov %>% 
+  filter(p.val < 0.05) %>% 
+  arrange(type, treat_plot, taxon) 
+
+pander(aov.sig, digits = 3)
+```
+
+##Graph it
+
+```{r}
+#plot data, with facets shaded if p < 0.05
+
+plotdata <- data_taxa %>% 
+  filter(type == "meadow") %>% 
+#  select(-one_of(c("woodrush", "moss", "horsetail", "cover_tot"))) %>% 
+  gather(key = "taxon", value = "cover", grass:woodrush) #%>% 
+#  mutate(taxon = factor(taxon, levels = c("rush", "grass", "herb", "sedge", "moss", "horsetail", "woodrush")))
+
+#Create a data frame with the faceting variables
+# and some dummy data (that will be overwritten)
+facets <- filter(aov, type == "meadow")
+facets$year <- 1
+facets$cover <- 1
+
+
+meadow.sm <-   ggplot(plotdata, 
+                      aes(x = year, y = cover)) +
+  geom_boxplot(data = plotdata, aes(group = year)) +
+  geom_smooth(method = "lm", se = FALSE)   +
+  scale_x_discrete(labels = c("15", "16", "17")) +
+  geom_rect(data = subset(facets, p.val < 0.05), aes(fill = p.val), 
+            xmin = -Inf,xmax = Inf,
+            ymin = -Inf, ymax = Inf, alpha = 0.3) +
+  facet_grid(taxon ~ treat_plot:location, scales = "free_y") +
+  labs(title = "cover over time: meadow: ANOVA")
+
+meadow.sm
+ggsave(meadow.sm, filename = "../outputs/meadow.sm.aov.png", width = 30, units = "cm", dpi = 600)
+```
+
+```{r}
+#plot data, with facets shaded if p < 0.05
+
+plotdata <- data_taxa %>% 
+  filter(type == "pasture") %>% 
+#  select(-one_of(c("woodrush", "moss", "horsetail", "cover_tot"))) %>% 
+  gather(key = "taxon", value = "cover", grass:woodrush) #%>% 
+#  mutate(taxon = factor(taxon, levels = c("rush", "grass", "herb", "sedge", "moss", "horsetail", "woodrush")))
+
+#Create a data frame with the faceting variables
+# and some dummy data (that will be overwritten)
+facets <- filter(aov, type == "pasture")
+facets$year <- 1
+facets$cover <- 1
+
+
+pasture.sm <-   ggplot(plotdata, 
+                      aes(x = year, y = cover)) +
+  geom_boxplot(data = plotdata, aes(group = year)) +
+  geom_smooth(method = "lm", se = FALSE)   +
+  scale_x_discrete(labels = c("15", "16", "17")) +
+  geom_rect(data = subset(facets, p.val < 0.05), aes(fill = p.val), 
+            xmin = -Inf,xmax = Inf,
+            ymin = -Inf, ymax = Inf, alpha = 0.3) +
+  facet_grid(taxon ~ treat_plot:location, scales = "free_y") +
+  labs(title = "cover over time: pasture: ANOVA")
+
+pasture.sm
+ggsave(pasture.sm, filename = "../outputs/pasture.sm.aov.png", width = 30, units = "cm", dpi = 600)
+```
+
+
+## Compare means: non-parametric
 
 ### Kruskal-Wallis rank sum test
 
@@ -76,12 +216,13 @@ krusk <- data_taxa_long %>%
     "df" = kruskal.test(. ~ year)$parameter,
     "p.val" = kruskal.test(. ~ year)$p.value,
     #"method" = kruskal.test(. ~ year)$method, 
-    "formula" = kruskal.test(. ~ year)$data.name
+    "formula" = kruskal.test(. ~ year)$data.name, 
+    "n" = length(.)
   )) 
 
 write.csv(krusk, file = "../outputs/kruskalTest.csv")
 
-pander(krusk, digits = 3)
+pander(head(krusk), digits = 3)
 ```
 The null hypothesis is that the samples are drawn from the same population, so if p is smaller than 0.05 we must reject that hypothesis. 
 
@@ -97,8 +238,10 @@ pander(krusk.sig, digits = 3)
 ```
 
 ##Graph it
-boxplot with linear model
+
 ```{r}
+#plot data, with facets shaded if p < 0.05
+
 plotdata <- data_taxa %>% 
   filter(type == "meadow") %>% 
 #  select(-one_of(c("woodrush", "moss", "horsetail", "cover_tot"))) %>% 
@@ -124,10 +267,12 @@ meadow.sm <-   ggplot(plotdata,
   labs(title = "cover over time: meadow: kruskal wallis")
 
 meadow.sm
-ggsave(meadow.sm, filename = "../outputs/meadow.sm.krusk.png", width = 30, units = "cm", dpi = 600)
+#ggsave(meadow.sm, filename = "../outputs/meadow.sm.krusk.png", width = 30, units = "cm", dpi = 600)
 ```
 
 ```{r}
+#plot data, with facets shaded if p < 0.05
+
 plotdata <- data_taxa %>% 
   filter(type == "pasture") %>% 
 #  select(-one_of(c("woodrush", "moss", "horsetail", "cover_tot"))) %>% 
@@ -153,8 +298,6 @@ pasture.sm <-   ggplot(plotdata,
   labs(title = "cover over time: pasture: kruskal wallis")
 
 pasture.sm
-ggsave(pasture.sm, filename = "../outputs/pasture.sm.krusk.png", width = 30, units = "cm", dpi = 600)
+#ggsave(pasture.sm, filename = "../outputs/pasture.sm.krusk.png", width = 30, units = "cm", dpi = 600)
 ```
-
-
 
