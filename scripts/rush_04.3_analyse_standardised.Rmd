@@ -84,3 +84,4 @@ ggplot(data = plotdata, aes(x = year, y = cover_adj, colour = replicate)) +
 
 why are the slopes different to the non-standardised data????
 
+

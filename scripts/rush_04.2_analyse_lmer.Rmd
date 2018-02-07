@@ -3,10 +3,11 @@ title: 'Rush Trial: data exploration 2017: linear mixed effects model'
 output:  #html_notebook
   html_document:
     keep_md: yes
-
 ---
 
-Packages
+5 Feb 2018: reviewed after reading more on mixed models
+
+## Packages  
 ```{r}
 library(tidyverse)
 library(skimr)
@@ -16,7 +17,7 @@ library(lme4)
 library(lmerTest)
 ```
 
-Import data
+## Import data  
 ```{r}
 grp_calc_w <- read.csv("../data/prepped/taxon_grp_calc_w.csv", header = TRUE)
 ```
@@ -38,13 +39,13 @@ funModeling::correlation_table(data = data_taxa, target = "treat_plot") #correla
 
 
 
-# Analysis
+## Analysis  
 
 A lot of this thanks to https://benwhalley.github.io/just-enough-r/fitting-models.html 
 
 **The 1 refers to an intercept, and so in English this part of the formula means ‘add a random intercept for each level of grouping’.**
 
-## add random intercepts (groupings within the data)
+### add random intercepts (groupings within the data)
 
 ```{r}
 model <- lmer(data = filter(data_taxa, type == "meadow"),
@@ -68,19 +69,22 @@ broom::tidy(model)
 
 ```{r}
 model <- lmerTest::lmer(data = filter(data_taxa, type == "meadow"),
-              formula = rush ~ treat_plot + (treat_plot | location/replicate/year))
+              formula = rush ~ treat_plot + (treat_plot | location/replicate))
 model
 summary(model)
 broom::tidy(model)
+plot(model)
 ```
 
 
 ```{r}
 model <- lmerTest::lmer(data = filter(data_taxa, type == "meadow"),
-              formula = rush ~ year + (1 | location/treat_plot))
+              formula = rush ~ treat_plot * year + (1 | location/replicate/treat_plot))
 model
 summary(model)
 broom::tidy(model)
+plot(model)
+plot(ranef(model))
 ```
 
 
